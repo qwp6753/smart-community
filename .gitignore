@@ -1,0 +1,39 @@
+﻿# IDE Configuration
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Build Output
+target/
+*.class
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Log Files
+*.log
+logs/
+
+# Sensitive Configuration
+application-local.yml
+application-local.properties
+
+# Maven Wrapper
+.mvn/
+mvnw
+mvnw.cmd
+
+# Eclipse
+.settings/
+.project
+.classpath
+
+# VS Code
+.vscode/
+
+# OS files
+*.swp
+*.swo
+*~

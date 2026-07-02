@@ -1,0 +1,49 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "智慧小区",
+        "navigationBarBackgroundColor": "#1677ff",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/person/search",
+      "style": {
+        "navigationBarTitleText": "居民查询"
+      }
+    },
+    {
+      "path": "pages/visitor/create",
+      "style": {
+        "navigationBarTitleText": "访客登记"
+      }
+    },
+    {
+      "path": "pages/access/face",
+      "style": {
+        "navigationBarTitleText": "人脸识别"
+      }
+    },
+    {
+      "path": "pages/map/index",
+      "style": {
+        "navigationBarTitleText": "小区地图"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#f6f7fb",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "智慧小区",
+    "navigationBarBackgroundColor": "#ffffff"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "智慧小区",
+  "appid": "__UNI__SMARTCOMMUNITY__",
+  "description": "",
+  "versionName": "0.0.1",
+  "versionCode": "1",
+  "transformPx": false,
+  "h5": {
+    "title": "智慧小区"
+  }
+}
+
