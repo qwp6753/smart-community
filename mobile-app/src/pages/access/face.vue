@@ -6,11 +6,13 @@
         <image :src="imagePath" mode="aspectFit" class="preview-img" />
       </view>
       <view class="actions">
-        <u-button type="primary" @click="takePhoto">拍照识别</u-button>
-        <u-button v-if="imagePath" type="warning" @click="choosePhoto">重新选取</u-button>
+        <button class="btn-primary" @click="takePhoto">拍照识别</button>
+        <button v-if="imagePath" class="btn-warning" @click="choosePhoto">重新选取</button>
       </view>
       <view v-if="result" class="result">
-        <u-tag :text="result.success ? '识别成功' : '识别失败'" :type="result.success ? 'success' : 'error'" />
+        <view class="tag" :class="result.success ? 'tag-success' : 'tag-error'">
+          <text>{{ result.success ? '识别成功' : '识别失败' }}</text>
+        </view>
         <text class="result-text">匹配：{{ result.personName || '未知' }}</text>
         <text class="result-text" v-if="result.confidence">置信度：{{ (result.confidence * 100).toFixed(1) }}%</text>
       </view>
@@ -95,5 +97,34 @@ const identifyFace = async (filePath) => {
 .result-text {
   font-size: 28rpx;
   color: #333;
+}
+.btn-primary {
+  background: #2b85e4;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  flex: 1;
+}
+.btn-warning {
+  background: #f0a020;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  flex: 1;
+}
+.tag {
+  padding: 8rpx 24rpx;
+  border-radius: 6rpx;
+  font-size: 26rpx;
+}
+.tag-success {
+  background: #e8f5e9;
+  color: #18a058;
+}
+.tag-error {
+  background: #fbe9e7;
+  color: #d03050;
 }
 </style>

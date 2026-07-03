@@ -2,15 +2,15 @@
   <view class="page">
     <view class="card">
       <view class="card-title">访客登记</view>
-      <u--input v-model="form.name" placeholder="访客姓名" clearable />
+      <input class="input" v-model="form.name" placeholder="访客姓名" />
       <view style="height: 12px" />
-      <u--input v-model="form.mobile" placeholder="手机号" clearable />
+      <input class="input" v-model="form.mobile" placeholder="手机号" />
       <view style="height: 12px" />
-      <u--input v-model="form.idCard" placeholder="身份证号" clearable />
+      <input class="input" v-model="form.idCard" placeholder="身份证号" />
       <view style="height: 12px" />
-      <u--input v-model="form.reason" placeholder="来访原因" clearable />
+      <input class="input" v-model="form.reason" placeholder="来访原因" />
       <view style="height: 16px" />
-      <u-button type="primary" :loading="loading" @click="submit">提交登记</u-button>
+      <button class="btn-primary" :loading="loading" @click="submit">提交登记</button>
     </view>
   </view>
 </template>
@@ -59,5 +59,18 @@ const submit = async () => {
   font-size: 32rpx;
   font-weight: 600;
   margin-bottom: 24rpx;
+}
+.input {
+  border: 1px solid #dcdfe6;
+  border-radius: 8rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+}
+.btn-primary {
+  background: #2b85e4;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 30rpx;
 }
 </style>

@@ -6,19 +6,19 @@
 
     <view class="grid">
       <view class="grid-item" @click="navTo('/pages/access/face')">
-        <u-icon name="camera-fill" size="40" color="#2b85e4" />
+        <text class="icon">📷</text>
         <text>人脸门禁</text>
       </view>
       <view class="grid-item" @click="navTo('/pages/person/search')">
-        <u-icon name="search" size="40" color="#18a058" />
+        <text class="icon">🔍</text>
         <text>查居民</text>
       </view>
       <view class="grid-item" @click="navTo('/pages/visitor/create')">
-        <u-icon name="man-add-fill" size="40" color="#f0a020" />
+        <text class="icon">👤</text>
         <text>访客登记</text>
       </view>
       <view class="grid-item" @click="navTo('/pages/map/index')">
-        <u-icon name="map-fill" size="40" color="#d03050" />
+        <text class="icon">🗺️</text>
         <text>小区地图</text>
       </view>
     </view>
@@ -98,6 +98,9 @@ const navTo = (url) => {
   gap: 12rpx;
   font-size: 28rpx;
   color: #333;
+}
+.icon {
+  font-size: 48rpx;
 }
 .card {
   background: #fff;

@@ -2,11 +2,11 @@
   <view class="page">
     <view class="title">智慧小区</view>
     <view class="card">
-      <u--input v-model="form.username" placeholder="用户名" clearable />
+      <input class="input" v-model="form.username" placeholder="用户名" />
       <view style="height: 12px" />
-      <u--input v-model="form.password" type="password" placeholder="密码" clearable />
+      <input class="input" v-model="form.password" type="password" placeholder="密码" />
       <view style="height: 16px" />
-      <u-button type="primary" :loading="loading" @click="onLogin">登录</u-button>
+      <button class="btn-primary" :loading="loading" @click="onLogin">登录</button>
     </view>
   </view>
 </template>
@@ -55,5 +55,18 @@ const onLogin = async () => {
   background: #ffffff;
   border-radius: 20rpx;
   padding: 32rpx;
+}
+.input {
+  border: 1px solid #dcdfe6;
+  border-radius: 8rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+}
+.btn-primary {
+  background: #2b85e4;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 30rpx;
 }
 </style>

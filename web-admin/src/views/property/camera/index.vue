@@ -33,9 +33,10 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <div class="table-actions">
+            <el-button type="success" :icon="VideoCamera" size="small" @click="handlePreview(row)">预览</el-button>
             <el-button type="primary" :icon="Edit" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" :icon="Delete" size="small" @click="handleDelete(row)">删除</el-button>
           </div>
@@ -83,13 +84,35 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 摄像头预览弹窗 -->
+    <el-dialog v-model="previewVisible" title="摄像头预览" width="720px" @close="stopPreview">
+      <div class="device-select">
+        <span>选择摄像头：</span>
+        <el-select v-model="selectedDeviceId" placeholder="请选择" @change="switchDevice" style="width: 300px">
+          <el-option v-for="d in videoDevices" :key="d.deviceId" :label="d.label" :value="d.deviceId" />
+        </el-select>
+      </div>
+      <div class="preview-container">
+        <video ref="videoRef" autoplay playsinline class="preview-video" />
+        <canvas ref="canvasRef" class="preview-canvas" />
+      </div>
+      <div v-if="snapshot" class="snapshot-preview">
+        <img :src="snapshot" class="snapshot-img" />
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="takeSnapshot">拍照</el-button>
+        <el-button v-if="snapshot" type="success" @click="downloadSnapshot">下载截图</el-button>
+        <el-button @click="previewVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, VideoCamera } from '@element-plus/icons-vue'
 import { listCameras, createCamera, updateCamera, deleteCamera } from '@/api/camera'
 import { listCommunities } from '@/api/community'
 
@@ -100,6 +123,15 @@ const dialogVisible = ref(false)
 const formRef = ref()
 const isEdit = ref(false)
 const editId = ref(null)
+
+// 摄像头预览相关
+const previewVisible = ref(false)
+const videoRef = ref(null)
+const canvasRef = ref(null)
+const snapshot = ref('')
+const videoDevices = ref([])
+const selectedDeviceId = ref('')
+let mediaStream = null
 
 const searchForm = reactive({ name: '', communityId: '' })
 const pagination = reactive({ current: 1, size: 10, total: 0 })
@@ -209,6 +241,80 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
+// 摄像头预览
+const handlePreview = async () => {
+  snapshot.value = ''
+  previewVisible.value = true
+  try {
+    // 先获取临时流以授权设备访问
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    // 枚举所有视频设备
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    videoDevices.value = devices.filter(d => d.kind === 'videoinput')
+    // 停止临时流
+    tempStream.getTracks().forEach(t => t.stop())
+    // 优先选择电脑内置摄像头
+    const builtIn = videoDevices.value.find(d =>
+      d.label.includes('Integrated') || d.label.includes('Built-in') || d.label.includes('内建') || d.label.includes('集成')
+    )
+    selectedDeviceId.value = builtIn?.deviceId || videoDevices.value[0]?.deviceId || ''
+    if (selectedDeviceId.value) {
+      await startCamera(selectedDeviceId.value)
+    }
+  } catch (e) {
+    ElMessage.error('无法访问摄像头，请检查浏览器权限设置')
+    previewVisible.value = false
+  }
+}
+
+const startCamera = async (deviceId) => {
+  stopPreview()
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId } },
+      audio: false
+    })
+    if (videoRef.value) {
+      videoRef.value.srcObject = mediaStream
+    }
+  } catch (e) {
+    ElMessage.error('启动摄像头失败')
+  }
+}
+
+const switchDevice = (deviceId) => {
+  selectedDeviceId.value = deviceId
+  startCamera(deviceId)
+}
+
+const stopPreview = () => {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop())
+    mediaStream = null
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null
+  }
+}
+
+const takeSnapshot = () => {
+  if (!videoRef.value || !canvasRef.value) return
+  const video = videoRef.value
+  const canvas = canvasRef.value
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+  snapshot.value = canvas.toDataURL('image/png')
+}
+
+const downloadSnapshot = () => {
+  if (!snapshot.value) return
+  const link = document.createElement('a')
+  link.href = snapshot.value
+  link.download = `camera-snapshot-${Date.now()}.png`
+  link.click()
+}
+
 onMounted(() => {
   loadCommunities()
   fetchData()
@@ -232,5 +338,36 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+.device-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.preview-container {
+  display: flex;
+  justify-content: center;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.preview-video {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+}
+.preview-canvas {
+  display: none;
+}
+.snapshot-preview {
+  margin-top: 16px;
+  text-align: center;
+}
+.snapshot-img {
+  max-width: 100%;
+  max-height: 200px;
+  border: 2px solid #409eff;
+  border-radius: 8px;
 }
 </style>
