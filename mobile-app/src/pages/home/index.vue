@@ -2,6 +2,7 @@
   <view class="page">
     <view class="header">
       <text class="greeting">您好，{{ userName }}</text>
+      <text class="logout-btn" @click="handleLogout">退出</text>
     </view>
 
     <view class="grid">
@@ -16,6 +17,10 @@
       <view class="grid-item" @click="navTo('/pages/visitor/create')">
         <text class="icon">👤</text>
         <text>访客登记</text>
+      </view>
+      <view class="grid-item" @click="navTo('/pages/record/index')">
+        <text class="icon">📋</text>
+        <text>出入记录</text>
       </view>
       <view class="grid-item" @click="navTo('/pages/map/index')">
         <text class="icon">🗺️</text>
@@ -45,7 +50,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { get } from '@/utils/request'
+import { get, post } from '@/utils/request'
 
 const userName = ref('管理员')
 const stats = ref({ recordCount: 0, visitorCount: 0, personCount: 0 })
@@ -56,16 +61,27 @@ onMounted(async () => {
     try {
       const u = JSON.parse(info)
       userName.value = u.realName || u.username || '管理员'
-    } catch (e) { }
+    } catch (e) {
+      uni.showToast({ title: '用户名加载失败', icon: 'none' })
+    }
   }
   try {
     const res = await get('/dashboard/stats')
     stats.value = res.data
-  } catch (e) { }
+  } catch (e) {
+    // 统计数据加载失败不影响主要功能
+  }
 })
 
 const navTo = (url) => {
   uni.navigateTo({ url })
+}
+
+const handleLogout = async () => {
+  try { await post('/auth/logout') } catch (e) { /* 网络异常不阻塞本地清理 */ }
+  uni.removeStorageSync('token')
+  uni.removeStorageSync('userInfo')
+  uni.reLaunch({ url: '/pages/login/index' })
 }
 </script>
 
@@ -75,11 +91,21 @@ const navTo = (url) => {
 }
 .header {
   padding: 40rpx 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .greeting {
   font-size: 40rpx;
   font-weight: 700;
   color: #1f2329;
+}
+.logout-btn {
+  font-size: 26rpx;
+  color: #999;
+  padding: 8rpx 20rpx;
+  border: 1px solid #dcdfe6;
+  border-radius: 8rpx;
 }
 .grid {
   display: flex;

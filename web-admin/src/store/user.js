@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as loginApi, currentUser as currentUserApi } from '@/api/auth'
+import { login as loginApi, logout as logoutApi, currentUser as currentUserApi } from '@/api/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -37,7 +37,8 @@ export const useUserStore = defineStore('user', () => {
     return permissions.value.has(perm)
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try { await logoutApi() } catch (e) { /* 网络异常不阻塞本地清理 */ }
     clearToken()
     userInfo.value = null
     permissions.value = new Set()

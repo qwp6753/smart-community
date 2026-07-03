@@ -38,6 +38,12 @@
       "style": {
         "navigationBarTitleText": "小区地图"
       }
+    },
+    {
+      "path": "pages/record/index",
+      "style": {
+        "navigationBarTitleText": "出入记录"
+      }
     }
   ],
   "globalStyle": {

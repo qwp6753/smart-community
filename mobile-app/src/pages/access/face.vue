@@ -56,6 +56,7 @@ const identifyFace = async (filePath) => {
     const res = await post('/face/identify', { image: base64 })
     result.value = res.data
   } catch (e) {
+    uni.showToast({ title: '识别失败，请重试', icon: 'none' })
     result.value = { success: false, errorMessage: '识别失败' }
   }
 }

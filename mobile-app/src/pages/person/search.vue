@@ -35,7 +35,9 @@ const search = async () => {
   try {
     const res = await get('/persons', { current: 1, size: 50, userName: keyword.value })
     list.value = res.data.records || []
-  } catch (e) { }
+  } catch (e) {
+    uni.showToast({ title: '查询失败，请重试', icon: 'none' })
+  }
 }
 </script>
 

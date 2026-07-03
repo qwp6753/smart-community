@@ -76,6 +76,13 @@
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
+        <el-form-item v-if="!isEdit" label="分配角色">
+          <el-checkbox-group v-model="form.roleIds">
+            <el-checkbox v-for="role in allRoles" :key="role.roleId" :value="role.roleId">
+              {{ role.roleName }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -121,7 +128,8 @@ const form = reactive({
   password: '',
   realName: '',
   mobile: '',
-  status: 1
+  status: 1,
+  roleIds: []
 })
 
 const rules = {
@@ -155,13 +163,20 @@ const handleSearch = () => {
 
 const resetForm = () => {
   formRef.value?.resetFields()
-  Object.assign(form, { username: '', password: '', realName: '', mobile: '', status: 1 })
+  Object.assign(form, { username: '', password: '', realName: '', mobile: '', status: 1, roleIds: [] })
   isEdit.value = false
   editId.value = null
 }
 
-const handleAdd = () => {
+const handleAdd = async () => {
   resetForm()
+  // 加载全部角色供选择
+  try {
+    const res = await listAllRoles()
+    allRoles.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
   dialogVisible.value = true
 }
 

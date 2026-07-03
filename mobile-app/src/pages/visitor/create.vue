@@ -40,6 +40,7 @@ const submit = async () => {
     uni.showToast({ title: '登记成功', icon: 'success' })
     uni.navigateBack()
   } catch (e) {
+    uni.showToast({ title: '提交失败，请重试', icon: 'none' })
   } finally {
     loading.value = false
   }

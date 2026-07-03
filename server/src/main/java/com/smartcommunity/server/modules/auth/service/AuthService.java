@@ -12,10 +12,12 @@ import com.smartcommunity.server.modules.system.service.UserService;
 import com.smartcommunity.server.security.JwtTokenProvider;
 import com.smartcommunity.server.security.LoginUser;
 import com.smartcommunity.server.security.SecurityContext;
+import com.smartcommunity.server.security.TokenStoreService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,16 +29,19 @@ public class AuthService {
     private final RoleService roleService;
     private final MenuService menuService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenStoreService tokenStoreService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(UserService userService,
                        @Lazy RoleService roleService,
                        MenuService menuService,
-                       JwtTokenProvider jwtTokenProvider) {
+                       JwtTokenProvider jwtTokenProvider,
+                       TokenStoreService tokenStoreService) {
         this.userService = userService;
         this.roleService = roleService;
         this.menuService = menuService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.tokenStoreService = tokenStoreService;
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -48,37 +53,46 @@ public class AuthService {
             throw BusinessException.badRequest("账号已被禁用");
         }
 
-        // 查询用户角色ID列表
+        // 查询角色和权限
         List<Long> roleIds = userService.getRoleIds(user.getUserId());
-
-        // 查询角色编码
         Set<String> roleCodes = new LinkedHashSet<>();
         for (Long roleId : roleIds) {
             var role = roleService.getById(roleId);
-            if (role != null) {
-                roleCodes.add(role.getRoleCode());
-            }
+            if (role != null) roleCodes.add(role.getRoleCode());
         }
-
-        // 查询权限标识和菜单树
         Set<String> permissions = new LinkedHashSet<>(menuService.getPermissionsByRoleIds(roleIds));
         List<MenuItemVO> menus = menuService.getMenuTreeByRoleIds(roleIds);
 
         LoginUser loginUser = new LoginUser(
-                user.getUserId(),
-                user.getUsername(),
-                user.getRealName(),
-                roleCodes,
-                permissions
+                user.getUserId(), user.getUsername(), user.getRealName(),
+                roleCodes, permissions
         );
 
-        String token = jwtTokenProvider.generateToken(loginUser);
+        // 生成 JWT（仅含 userId + tokenId）+ Redis 存储完整会话
+        JwtTokenProvider.TokenPair pair = jwtTokenProvider.generateToken(user.getUserId());
+        Duration ttl = Duration.ofSeconds(jwtTokenProvider.getExpireSeconds());
+        tokenStoreService.save(pair.tokenId(), loginUser, ttl);
+
         return new LoginResponse(
-                token,
+                pair.token(),
                 toProfile(loginUser),
                 permissions,
                 menus
         );
+    }
+
+    /** 登出：删除 Redis 会话 */
+    public void logout(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return;
+        }
+        try {
+            String token = authorizationHeader.substring(7);
+            String tokenId = jwtTokenProvider.parseTokenId(token);
+            tokenStoreService.remove(tokenId);
+        } catch (Exception ignored) {
+            // Token 已过期或非法，不需要额外处理
+        }
     }
 
     public UserProfileVO currentUser() {
@@ -91,11 +105,8 @@ public class AuthService {
 
     private UserProfileVO toProfile(LoginUser loginUser) {
         return new UserProfileVO(
-                loginUser.userId(),
-                loginUser.username(),
-                loginUser.realName(),
-                loginUser.roles(),
-                loginUser.permissions()
+                loginUser.userId(), loginUser.username(), loginUser.realName(),
+                loginUser.roles(), loginUser.permissions()
         );
     }
 }

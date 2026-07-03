@@ -22,9 +22,10 @@
           <el-switch :model-value="row.status === 1" disabled />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
           <div class="table-actions">
+            <el-button type="success" :icon="Location" size="small" @click="handleViewMap(row)">定位</el-button>
             <el-button type="primary" :icon="Edit" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" :icon="Delete" size="small" @click="handleDelete(row)">删除</el-button>
           </div>
@@ -44,7 +45,7 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="resetForm">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="750px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="小区名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入小区名称" />
@@ -64,6 +65,10 @@
         <el-form-item label="纬度" prop="mapLat">
           <el-input-number v-model="form.mapLat" :precision="6" />
         </el-form-item>
+        <!-- 高德地图选点：address 变化时自动搜索定位 -->
+        <el-form-item label="地图定位" v-if="mapAk">
+          <MapPicker v-model="mapPosition" :ak="mapAk" :security-js-code="mapSecurityJsCode" :address="form.address" />
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
@@ -73,14 +78,27 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看定位弹窗 -->
+    <el-dialog v-model="mapDialogVisible" :title="mapViewTitle" width="750px">
+      <div class="view-map-wrap" v-if="mapAk">
+        <MapPicker v-model="viewPosition" :ak="mapAk" :security-js-code="mapSecurityJsCode" />
+      </div>
+      <div v-else class="map-unavailable">地图服务未配置，请在 application.properties 中配置高德地图 AK</div>
+      <template #footer>
+        <el-button @click="mapDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Location } from '@element-plus/icons-vue'
 import { listCommunities, createCommunity, updateCommunity, deleteCommunity } from '@/api/community'
+import request from '@/api/request'
+import MapPicker from './MapPicker.vue'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -91,6 +109,37 @@ const editId = ref(null)
 
 const searchForm = reactive({ name: '' })
 const pagination = reactive({ current: 1, size: 10, total: 0 })
+
+// 高德地图
+const mapAk = ref('')
+const mapSecurityJsCode = ref('')
+const mapPosition = ref({ lng: 116.397428, lat: 39.90923 })
+
+// 查看定位
+const mapDialogVisible = ref(false)
+const viewPosition = ref({ lng: 116.397428, lat: 39.90923 })
+const mapViewTitle = ref('')
+
+// 表单坐标 ↔ 地图位置双向同步
+watch(mapPosition, (val) => {
+  if (val) {
+    form.mapLng = val.lng
+    form.mapLat = val.lat
+  }
+}, { deep: true })
+
+
+const fetchMapConfig = async () => {
+  try {
+    const res = await request.get('/map/config')
+    if (res.data.ak) {
+      mapAk.value = res.data.ak
+      mapSecurityJsCode.value = res.data.securityJsCode || ''
+    }
+  } catch (e) {
+    console.error('获取地图配置失败:', e)
+  }
+}
 
 const form = reactive({
   name: '',
@@ -147,14 +196,18 @@ const resetForm = () => {
 
 const handleAdd = () => {
   resetForm()
+  mapPosition.value = { lng: 116.397428, lat: 39.90923 }
   dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   resetForm()
   isEdit.value = true
-  editId.value = row.id
+  editId.value = row.communityId
   Object.assign(form, row)
+  if (row.mapLng && row.mapLat) {
+    mapPosition.value = { lng: row.mapLng, lat: row.mapLat }
+  }
   dialogVisible.value = true
 }
 
@@ -178,14 +231,25 @@ const handleSubmit = async () => {
 
 const handleDelete = (row) => {
   ElMessageBox.confirm('确定删除该小区吗？', '提示', { type: 'warning' }).then(async () => {
-    await deleteCommunity(row.id)
+    await deleteCommunity(row.communityId)
     ElMessage.success('删除成功')
     fetchData()
   }).catch(() => {})
 }
 
+const handleViewMap = (row) => {
+  if (row.mapLng == null || row.mapLat == null) {
+    ElMessage.warning('该小区尚未设置坐标，请先编辑录入经纬度')
+    return
+  }
+  mapViewTitle.value = `${row.name} — 地图定位`
+  viewPosition.value = { lng: row.mapLng, lat: row.mapLat }
+  mapDialogVisible.value = true
+}
+
 onMounted(() => {
   fetchData()
+  fetchMapConfig()
 })
 </script>
 
