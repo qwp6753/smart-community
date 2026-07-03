@@ -7,15 +7,18 @@
     "dev:h5": "vite",
     "build:h5": "vite build"
   },
+
   "dependencies": {
+    "@dcloudio/uni-components": "^3.0.0-alpha-3000020210521001",
+    "@dcloudio/uni-h5": "^2.0.2-5000720260410001",
+    "@dcloudio/uni-mp-weixin": "^2.0.2-5000720260410001",
     "pinia": "^3.0.3",
     "uview-plus": "^3.3.0",
     "vue": "^3.5.39"
   },
   "devDependencies": {
-    "@dcloudio/vite-plugin-uni": "^3.0.0",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5010420260626001",
     "@vitejs/plugin-vue": "^6.0.7",
-    "vite": "^8.1.1"
+    "vite": "^5.2.8"
   }
 }
-

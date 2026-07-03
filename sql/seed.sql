@@ -18,12 +18,21 @@ INSERT INTO menu (menu_id, menu_name, path, component, icon, parent_id, sort, ty
 (9,  '居民管理','/property/persons', 'property/person/index','Avatar',     6, 3, 1, 'property:person:view',     1),
 (10, '门禁管理','/access',           'Layout',             'Lock',         0, 4, 0, 'access:record:view',      1),
 (11, '出入记录','/access/records',   'access/record/index','Tickets',      10,1, 1, 'access:record:view',      1),
-(12, '访客登记','/access/visitors',  'access/visitor/index','Notebook',    10,2, 1, 'access:visitor:view',     1);
+(12, '访客登记','/access/visitors',  'access/visitor/index','Notebook',    10,2, 1, 'access:visitor:view',     1),
+-- 按钮级权限（type=2）
+(13, '用户编辑', NULL, NULL, NULL, 3, 1, 2, 'system:user:edit',        1),
+(14, '角色编辑', NULL, NULL, NULL, 4, 1, 2, 'system:role:edit',        1),
+(15, '菜单编辑', NULL, NULL, NULL, 5, 1, 2, 'system:menu:edit',        1),
+(16, '小区编辑', NULL, NULL, NULL, 7, 1, 2, 'property:community:edit', 1),
+(17, '摄像头编辑', NULL, NULL, NULL, 8, 1, 2, 'property:camera:edit',  1),
+(18, '居民编辑', NULL, NULL, NULL, 9, 1, 2, 'property:person:edit',    1),
+(19, '访客编辑', NULL, NULL, NULL, 12, 1, 2, 'access:visitor:edit',    1);
 
 INSERT INTO role_menu (role_id, menu_id) VALUES
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
 (1, 6), (1, 7), (1, 8), (1, 9),
-(1, 10), (1, 11), (1, 12);
+(1, 10), (1, 11), (1, 12),
+(1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19);
 
 INSERT INTO community (name, address, map_lng, map_lat, total_building, total_house, status) VALUES
 ('智慧社区一号', '北京市朝阳区望京街道100号',  116.480, 39.996, 8,  320, 1),
