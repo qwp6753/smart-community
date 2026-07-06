@@ -1,13 +1,14 @@
 package com.smartcommunity.server;
 
 import com.smartcommunity.server.security.JwtProperties;
+import com.smartcommunity.server.thirdparty.face.TencentFaceProperties;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, TencentFaceProperties.class})
 @MapperScan("com.smartcommunity.server.modules")
 public class SmartCommunityServerApplication {
 

@@ -1,6 +1,7 @@
 package com.smartcommunity.server.modules.auth.controller;
 
 import com.smartcommunity.server.common.api.ApiResponse;
+import com.smartcommunity.server.modules.auth.captcha.CaptchaService;
 import com.smartcommunity.server.modules.auth.dto.LoginRequest;
 import com.smartcommunity.server.modules.auth.service.AuthService;
 import com.smartcommunity.server.modules.auth.vo.LoginResponse;
@@ -9,14 +10,28 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final CaptchaService captchaService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, CaptchaService captchaService) {
         this.authService = authService;
+        this.captchaService = captchaService;
+    }
+
+    /** 获取图片验证码 */
+    @GetMapping("/captcha")
+    public ApiResponse<Map<String, String>> captcha() {
+        CaptchaService.CaptchaResult result = captchaService.generate();
+        return ApiResponse.success(Map.of(
+                "captchaKey", result.captchaKey(),
+                "captchaImage", result.captchaImage()
+        ));
     }
 
     @PostMapping("/login")

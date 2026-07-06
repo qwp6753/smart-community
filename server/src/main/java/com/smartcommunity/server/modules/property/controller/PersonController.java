@@ -54,4 +54,27 @@ public class PersonController {
         personService.delete(id);
         return ApiResponse.success(null);
     }
+
+    /** 上传人脸照片 */
+    @RequirePermission("property:person:edit")
+    @PostMapping("/{id}/face")
+    public ApiResponse<String> uploadFace(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        String image = body.get("image");
+        if (image == null || image.isBlank()) {
+            return ApiResponse.fail(400, "图片数据不能为空");
+        }
+        String faceUrl = personService.saveFace(id, image);
+        return ApiResponse.success("人脸照片上传成功", faceUrl);
+    }
+
+    /** 获取人脸照片（base64） */
+    @RequirePermission("property:person:view")
+    @GetMapping("/{id}/face")
+    public ApiResponse<String> getFace(@PathVariable Long id) {
+        String base64 = personService.getFaceBase64(id);
+        if (base64 == null) {
+            return ApiResponse.fail(404, "未找到人脸照片");
+        }
+        return ApiResponse.success(base64);
+    }
 }

@@ -33,7 +33,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <div class="table-actions">
             <el-button type="success" :icon="VideoCamera" size="small" @click="handlePreview(row)">预览</el-button>
@@ -97,12 +97,29 @@
         <video ref="videoRef" autoplay playsinline class="preview-video" />
         <canvas ref="canvasRef" class="preview-canvas" />
       </div>
-      <div v-if="snapshot" class="snapshot-preview">
-        <img :src="snapshot" class="snapshot-img" />
+      <div v-if="snapshot" class="snapshot-section">
+        <div class="snapshot-preview">
+          <img :src="snapshot" class="snapshot-img" />
+        </div>
+        <div v-if="faceResult" class="face-result">
+          <el-alert
+            :title="faceResult.success ? '识别成功：' + faceResult.personName : '未识别到居民'"
+            :type="faceResult.success ? 'success' : 'warning'"
+            :closable="false"
+            show-icon
+          >
+            <template v-if="faceResult.success && faceResult.confidence">
+              <span>置信度：{{ (faceResult.confidence * 100).toFixed(1) }}%</span>
+            </template>
+          </el-alert>
+        </div>
       </div>
       <template #footer>
         <el-button type="primary" @click="takeSnapshot">拍照</el-button>
-        <el-button v-if="snapshot" type="success" @click="downloadSnapshot">下载截图</el-button>
+        <el-button v-if="snapshot" type="success" :loading="faceLoading" @click="identifyFace">
+          人脸识别通行
+        </el-button>
+        <el-button v-if="snapshot" @click="downloadSnapshot">下载截图</el-button>
         <el-button @click="previewVisible = false">关闭</el-button>
       </template>
     </el-dialog>
@@ -115,6 +132,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus, Edit, Delete, VideoCamera } from '@element-plus/icons-vue'
 import { listCameras, createCamera, updateCamera, deleteCamera } from '@/api/camera'
 import { listCommunities } from '@/api/community'
+import request from '@/api/request'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -131,7 +149,12 @@ const canvasRef = ref(null)
 const snapshot = ref('')
 const videoDevices = ref([])
 const selectedDeviceId = ref('')
+const currentPreviewRow = ref(null)
 let mediaStream = null
+
+// 人脸识别相关
+const faceLoading = ref(false)
+const faceResult = ref(null)
 
 const searchForm = reactive({ name: '', communityId: '' })
 const pagination = reactive({ current: 1, size: 10, total: 0 })
@@ -210,7 +233,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   isEdit.value = true
-  editId.value = row.id
+  editId.value = row.cameraId
   Object.assign(form, row)
   dialogVisible.value = true
 }
@@ -235,25 +258,23 @@ const handleSubmit = async () => {
 
 const handleDelete = (row) => {
   ElMessageBox.confirm('确定删除该摄像头吗？', '提示', { type: 'warning' }).then(async () => {
-    await deleteCamera(row.id)
+    await deleteCamera(row.cameraId)
     ElMessage.success('删除成功')
     fetchData()
   }).catch(() => {})
 }
 
 // 摄像头预览
-const handlePreview = async () => {
+const handlePreview = async (row) => {
+  currentPreviewRow.value = row
   snapshot.value = ''
+  faceResult.value = null
   previewVisible.value = true
   try {
-    // 先获取临时流以授权设备访问
     const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-    // 枚举所有视频设备
     const devices = await navigator.mediaDevices.enumerateDevices()
     videoDevices.value = devices.filter(d => d.kind === 'videoinput')
-    // 停止临时流
     tempStream.getTracks().forEach(t => t.stop())
-    // 优先选择电脑内置摄像头
     const builtIn = videoDevices.value.find(d =>
       d.label.includes('Integrated') || d.label.includes('Built-in') || d.label.includes('内建') || d.label.includes('集成')
     )
@@ -304,7 +325,35 @@ const takeSnapshot = () => {
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
   canvas.getContext('2d').drawImage(video, 0, 0)
-  snapshot.value = canvas.toDataURL('image/png')
+  snapshot.value = canvas.toDataURL('image/jpeg', 0.9)
+  faceResult.value = null
+}
+
+// 人脸识别通行
+const identifyFace = async () => {
+  if (!snapshot.value) return
+  faceLoading.value = true
+  faceResult.value = null
+  try {
+    const row = currentPreviewRow.value || {}
+    const res = await request.post('/face/camera-snap', {
+      image: snapshot.value,
+      cameraName: row.name || '摄像头',
+      location: row.location || '门禁',
+      communityId: row.communityId || 1,
+      type: 'in'
+    })
+    faceResult.value = res.data
+    if (res.data.success) {
+      ElMessage.success(`识别成功：${res.data.personName}`)
+    } else {
+      ElMessage.warning('未匹配到居民，已记录为陌生人')
+    }
+  } catch (e) {
+    ElMessage.error('人脸识别失败')
+  } finally {
+    faceLoading.value = false
+  }
 }
 
 const downloadSnapshot = () => {
@@ -360,14 +409,20 @@ onMounted(() => {
 .preview-canvas {
   display: none;
 }
-.snapshot-preview {
+.snapshot-section {
   margin-top: 16px;
+}
+.snapshot-preview {
   text-align: center;
+  margin-bottom: 12px;
 }
 .snapshot-img {
   max-width: 100%;
   max-height: 200px;
   border: 2px solid #409eff;
   border-radius: 8px;
+}
+.face-result {
+  margin-top: 8px;
 }
 </style>

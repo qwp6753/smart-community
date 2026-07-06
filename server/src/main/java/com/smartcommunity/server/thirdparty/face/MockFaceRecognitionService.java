@@ -1,8 +1,10 @@
 package com.smartcommunity.server.thirdparty.face;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnExpression("'${app.face.tencent.secret-id:}'.isBlank()")
 public class MockFaceRecognitionService implements FaceRecognitionService {
 
     @Override

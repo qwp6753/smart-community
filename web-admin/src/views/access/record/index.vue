@@ -28,10 +28,10 @@
       </el-table-column>
       <el-table-column prop="time" label="时间" width="180" />
       <el-table-column prop="location" label="位置" min-width="200" />
-      <el-table-column label="验证状态" width="120">
+      <el-table-column label="验证方式" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.verified === 1 ? 'success' : 'info'">
-            {{ row.verified === 1 ? '已验证' : '未验证' }}
+          <el-tag :type="row.verified === 1 ? 'success' : 'danger'">
+            {{ row.verified === 1 ? '人脸识别' : '未验证' }}
           </el-tag>
         </template>
       </el-table-column>

@@ -1,6 +1,7 @@
 package com.smartcommunity.server.modules.auth.service;
 
 import com.smartcommunity.server.common.exception.BusinessException;
+import com.smartcommunity.server.modules.auth.captcha.CaptchaService;
 import com.smartcommunity.server.modules.auth.dto.LoginRequest;
 import com.smartcommunity.server.modules.auth.vo.LoginResponse;
 import com.smartcommunity.server.modules.auth.vo.MenuItemVO;
@@ -30,21 +31,29 @@ public class AuthService {
     private final MenuService menuService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenStoreService tokenStoreService;
+    private final CaptchaService captchaService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(UserService userService,
                        @Lazy RoleService roleService,
                        MenuService menuService,
                        JwtTokenProvider jwtTokenProvider,
-                       TokenStoreService tokenStoreService) {
+                       TokenStoreService tokenStoreService,
+                       CaptchaService captchaService) {
         this.userService = userService;
         this.roleService = roleService;
         this.menuService = menuService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.tokenStoreService = tokenStoreService;
+        this.captchaService = captchaService;
     }
 
     public LoginResponse login(LoginRequest request) {
+        // 先校验验证码
+        if (!captchaService.validate(request.captchaKey(), request.captchaCode())) {
+            throw BusinessException.badRequest("验证码错误或已过期");
+        }
+
         User user = userService.getByUsername(request.username());
         if (user == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
             throw BusinessException.badRequest("用户名或密码错误");

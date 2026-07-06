@@ -2,19 +2,40 @@
   <view class="page">
     <view class="card">
       <view class="card-title">人脸识别门禁</view>
+      <view class="card-desc">拍照后系统将自动识别身份并记录出入</view>
+
+      <!-- 出入类型选择 -->
+      <view class="type-row">
+        <view class="type-item" :class="{ active: accessType === 'in' }" @click="accessType = 'in'">
+          <text class="type-icon">🚪</text>
+          <text class="type-label">进入小区</text>
+        </view>
+        <view class="type-item" :class="{ active: accessType === 'out' }" @click="accessType = 'out'">
+          <text class="type-icon">🚶</text>
+          <text class="type-label">离开小区</text>
+        </view>
+      </view>
+
       <view class="preview" v-if="imagePath">
         <image :src="imagePath" mode="aspectFit" class="preview-img" />
       </view>
+
       <view class="actions">
-        <button class="btn-primary" @click="takePhoto">拍照识别</button>
-        <button v-if="imagePath" class="btn-warning" @click="choosePhoto">重新选取</button>
+        <button class="btn-primary" @click="takePhoto">{{ imagePath ? '重新拍照' : '拍照识别' }}</button>
+        <button v-if="!imagePath" class="btn-secondary" @click="choosePhoto">从相册选择</button>
       </view>
+
       <view v-if="result" class="result">
-        <view class="tag" :class="result.success ? 'tag-success' : 'tag-error'">
-          <text>{{ result.success ? '识别成功' : '识别失败' }}</text>
+        <view class="result-card" :class="result.success ? 'result-success' : 'result-fail'">
+          <text class="result-title">{{ result.success ? '✅ 识别成功' : '⚠️ 未识别' }}</text>
+          <text class="result-name" v-if="result.personName">{{ result.personName }}</text>
+          <text class="result-confidence" v-if="result.confidence">
+            置信度：{{ (result.confidence * 100).toFixed(1) }}%
+          </text>
+          <text class="result-msg" v-if="!result.success">
+            {{ result.errorMessage || '未匹配到居民信息' }}
+          </text>
         </view>
-        <text class="result-text">匹配：{{ result.personName || '未知' }}</text>
-        <text class="result-text" v-if="result.confidence">置信度：{{ (result.confidence * 100).toFixed(1) }}%</text>
       </view>
     </view>
   </view>
@@ -26,6 +47,7 @@ import { post } from '@/utils/request'
 
 const imagePath = ref('')
 const result = ref(null)
+const accessType = ref('in')
 
 const takePhoto = () => {
   uni.chooseImage({
@@ -50,14 +72,26 @@ const choosePhoto = () => {
 }
 
 const identifyFace = async (filePath) => {
+  uni.showLoading({ title: '识别中...' })
   try {
     const fs = uni.getFileSystemManager()
     const base64 = fs.readFileSync(filePath, 'base64')
-    const res = await post('/face/identify', { image: base64 })
+    const res = await post('/face/identify', {
+      image: base64,
+      type: accessType.value,
+      location: '移动端人脸识别门禁'
+    })
     result.value = res.data
+    if (res.data.success) {
+      uni.showToast({ title: `欢迎，${res.data.personName}`, icon: 'success' })
+    } else {
+      uni.showToast({ title: '未识别到身份', icon: 'none' })
+    }
   } catch (e) {
     uni.showToast({ title: '识别失败，请重试', icon: 'none' })
-    result.value = { success: false, errorMessage: '识别失败' }
+    result.value = { success: false, errorMessage: '网络请求失败' }
+  } finally {
+    uni.hideLoading()
   }
 }
 </script>
@@ -74,8 +108,43 @@ const identifyFace = async (filePath) => {
 .card-title {
   font-size: 32rpx;
   font-weight: 600;
+  margin-bottom: 8rpx;
+}
+.card-desc {
+  font-size: 24rpx;
+  color: #999;
   margin-bottom: 24rpx;
 }
+
+/* 出入类型选择 */
+.type-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.type-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 0;
+  border: 2rpx solid #e4e7ed;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+.type-item.active {
+  border-color: #2b85e4;
+  background: #ecf5ff;
+}
+.type-icon {
+  font-size: 40rpx;
+  margin-bottom: 8rpx;
+}
+.type-label {
+  font-size: 26rpx;
+  color: #333;
+}
+
 .preview {
   margin-bottom: 24rpx;
 }
@@ -83,6 +152,7 @@ const identifyFace = async (filePath) => {
   width: 100%;
   height: 400rpx;
   border-radius: 12rpx;
+  background: #f5f7fa;
 }
 .actions {
   display: flex;
@@ -90,15 +160,43 @@ const identifyFace = async (filePath) => {
   margin-bottom: 24rpx;
 }
 .result {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  align-items: center;
+  margin-top: 8rpx;
 }
-.result-text {
-  font-size: 28rpx;
+.result-card {
+  padding: 24rpx;
+  border-radius: 12rpx;
+  text-align: center;
+}
+.result-success {
+  background: #f0f9eb;
+}
+.result-fail {
+  background: #fef0f0;
+}
+.result-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+.result-name {
+  display: block;
+  font-size: 32rpx;
   color: #333;
+  margin-bottom: 4rpx;
 }
+.result-confidence {
+  display: block;
+  font-size: 26rpx;
+  color: #909399;
+}
+.result-msg {
+  display: block;
+  font-size: 26rpx;
+  color: #f56c6c;
+  margin-top: 4rpx;
+}
+
 .btn-primary {
   background: #2b85e4;
   color: #fff;
@@ -107,25 +205,12 @@ const identifyFace = async (filePath) => {
   font-size: 30rpx;
   flex: 1;
 }
-.btn-warning {
-  background: #f0a020;
-  color: #fff;
-  border: none;
+.btn-secondary {
+  background: #f5f7fa;
+  color: #606266;
+  border: 1px solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 30rpx;
   flex: 1;
-}
-.tag {
-  padding: 8rpx 24rpx;
-  border-radius: 6rpx;
-  font-size: 26rpx;
-}
-.tag-success {
-  background: #e8f5e9;
-  color: #18a058;
-}
-.tag-error {
-  background: #fbe9e7;
-  color: #d03050;
 }
 </style>

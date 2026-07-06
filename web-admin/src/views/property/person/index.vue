@@ -18,6 +18,12 @@
     </div>
 
     <el-table :data="tableData" border stripe v-loading="loading">
+      <el-table-column label="人脸" width="80" align="center">
+        <template #default="{ row }">
+          <el-avatar v-if="row.faceUrl" :size="40" :src="getFaceImageUrl(row.faceUrl)" />
+          <el-icon v-else :size="40" color="#c0c4cc"><UserFilled /></el-icon>
+        </template>
+      </el-table-column>
       <el-table-column prop="userName" label="姓名" min-width="120" />
       <el-table-column prop="mobile" label="手机号" width="140" />
       <el-table-column prop="sex" label="性别" width="70" />
@@ -34,9 +40,10 @@
           <el-switch :model-value="row.state === 1" disabled />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <div class="table-actions">
+            <el-button type="warning" :icon="Camera" size="small" @click="handleFaceCollect(row)">采集人脸</el-button>
             <el-button type="primary" :icon="Edit" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" :icon="Delete" size="small" @click="handleDelete(row)">删除</el-button>
           </div>
@@ -56,6 +63,7 @@
       />
     </div>
 
+    <!-- 编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="姓名" prop="userName">
@@ -96,14 +104,34 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 人脸采集弹窗 -->
+    <el-dialog v-model="faceDialogVisible" title="人脸采集" width="520px" @close="stopCamera">
+      <div class="face-collect">
+        <div class="camera-box">
+          <video ref="faceVideoRef" autoplay playsinline class="face-video" />
+          <canvas ref="faceCanvasRef" class="face-canvas" />
+        </div>
+        <div v-if="faceSnapshot" class="face-snapshot">
+          <img :src="faceSnapshot" class="face-img" />
+          <p class="face-tip">确认照片清晰后点击"保存人脸"</p>
+        </div>
+      </div>
+      <template #footer>
+        <el-button v-if="!faceSnapshot" type="primary" @click="captureFace">拍照</el-button>
+        <el-button v-if="faceSnapshot" @click="retakeFace">重拍</el-button>
+        <el-button v-if="faceSnapshot" type="primary" :loading="faceUploading" @click="saveFace">保存人脸</el-button>
+        <el-button @click="faceDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { listPersons, createPerson, updatePerson, deletePerson } from '@/api/person'
+import { Search, Plus, Edit, Delete, Camera, UserFilled } from '@element-plus/icons-vue'
+import { listPersons, createPerson, updatePerson, deletePerson, uploadFace } from '@/api/person'
 import { listCommunities } from '@/api/community'
 
 const loading = ref(false)
@@ -113,6 +141,15 @@ const dialogVisible = ref(false)
 const formRef = ref()
 const isEdit = ref(false)
 const editId = ref(null)
+
+// 人脸采集相关
+const faceDialogVisible = ref(false)
+const faceVideoRef = ref(null)
+const faceCanvasRef = ref(null)
+const faceSnapshot = ref('')
+const faceUploading = ref(false)
+const currentFacePersonId = ref(null)
+let faceStream = null
 
 const searchForm = reactive({ userName: '', communityId: '' })
 const pagination = reactive({ current: 1, size: 10, total: 0 })
@@ -194,7 +231,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   isEdit.value = true
-  editId.value = row.id
+  editId.value = row.personId
   Object.assign(form, row)
   dialogVisible.value = true
 }
@@ -219,10 +256,72 @@ const handleSubmit = async () => {
 
 const handleDelete = (row) => {
   ElMessageBox.confirm('确定删除该人员吗？', '提示', { type: 'warning' }).then(async () => {
-    await deletePerson(row.id)
+    await deletePerson(row.personId)
     ElMessage.success('删除成功')
     fetchData()
   }).catch(() => {})
+}
+
+// ---- 人脸采集 ----
+
+const handleFaceCollect = async (row) => {
+  currentFacePersonId.value = row.personId
+  faceSnapshot.value = ''
+  faceDialogVisible.value = true
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    if (faceVideoRef.value) {
+      faceVideoRef.value.srcObject = faceStream
+    }
+  } catch (e) {
+    ElMessage.error('无法访问摄像头，请检查浏览器权限')
+    faceDialogVisible.value = false
+  }
+}
+
+const captureFace = () => {
+  if (!faceVideoRef.value || !faceCanvasRef.value) return
+  const video = faceVideoRef.value
+  const canvas = faceCanvasRef.value
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+  faceSnapshot.value = canvas.toDataURL('image/jpeg', 0.9)
+  stopCamera()
+}
+
+const retakeFace = () => {
+  faceSnapshot.value = ''
+  handleFaceCollect({ personId: currentFacePersonId.value })
+}
+
+const saveFace = async () => {
+  if (!faceSnapshot.value) return
+  faceUploading.value = true
+  try {
+    await uploadFace(currentFacePersonId.value, faceSnapshot.value)
+    ElMessage.success('人脸照片保存成功')
+    faceDialogVisible.value = false
+    fetchData()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    faceUploading.value = false
+  }
+}
+
+const stopCamera = () => {
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop())
+    faceStream = null
+  }
+}
+
+// 通过本地路径显示人脸照片（实际项目中可能是文件服务URL）
+const getFaceImageUrl = (faceUrl) => {
+  // faceUrl 是服务端存储的本地路径，这里无法直接访问，显示默认图标
+  // 实际部署时可配置静态资源映射
+  return ''
 }
 
 onMounted(() => {
@@ -248,5 +347,39 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* 人脸采集 */
+.face-collect {
+  text-align: center;
+}
+.camera-box {
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.face-video {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+.face-canvas {
+  display: none;
+}
+.face-snapshot {
+  margin-top: 16px;
+}
+.face-img {
+  max-width: 200px;
+  max-height: 200px;
+  border: 2px solid #409eff;
+  border-radius: 8px;
+}
+.face-tip {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 8px;
 }
 </style>

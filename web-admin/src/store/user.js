@@ -18,8 +18,8 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('token')
   }
 
-  const loginAction = async (username, password) => {
-    const res = await loginApi({ username, password })
+  const loginAction = async (username, password, captchaKey, captchaCode) => {
+    const res = await loginApi({ username, password, captchaKey, captchaCode })
     setToken(res.data.token)
     userInfo.value = res.data.userInfo
     permissions.value = new Set(res.data.permissions || [])
