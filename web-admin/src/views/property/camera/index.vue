@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="所属小区">
           <el-select v-model="searchForm.communityId" placeholder="请选择" clearable>
-            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in communities" :key="c.communityId" :label="c.name" :value="c.communityId" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -66,7 +66,7 @@
         </el-form-item>
         <el-form-item label="所属小区" prop="communityId">
           <el-select v-model="form.communityId" placeholder="请选择小区">
-            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in communities" :key="c.communityId" :label="c.name" :value="c.communityId" />
           </el-select>
         </el-form-item>
         <el-form-item label="位置" prop="location">
@@ -176,7 +176,7 @@ const rules = {
 const dialogTitle = computed(() => isEdit.value ? '编辑摄像头' : '新增摄像头')
 
 const getCommunityName = (id) => {
-  const c = communities.value.find((item) => item.id === id)
+  const c = communities.value.find((item) => item.communityId === id)
   return c ? c.name : '-'
 }
 
@@ -321,6 +321,10 @@ const stopPreview = () => {
 const takeSnapshot = () => {
   if (!videoRef.value || !canvasRef.value) return
   const video = videoRef.value
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    ElMessage.warning('摄像头画面未就绪，请稍后再试')
+    return
+  }
   const canvas = canvasRef.value
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight

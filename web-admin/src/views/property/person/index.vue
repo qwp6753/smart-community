@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="所属小区">
           <el-select v-model="searchForm.communityId" placeholder="请选择" clearable>
-            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in communities" :key="c.communityId" :label="c.name" :value="c.communityId" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -89,7 +89,7 @@
         </el-form-item>
         <el-form-item label="所属小区" prop="communityId">
           <el-select v-model="form.communityId" placeholder="请选择小区">
-            <el-option v-for="c in communities" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in communities" :key="c.communityId" :label="c.name" :value="c.communityId" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="state">
@@ -106,8 +106,15 @@
     </el-dialog>
 
     <!-- 人脸采集弹窗 -->
-    <el-dialog v-model="faceDialogVisible" title="人脸采集" width="520px" @close="stopCamera">
+    <el-dialog v-model="faceDialogVisible" title="人脸采集" width="560px" @close="stopFaceCamera">
       <div class="face-collect">
+        <!-- 摄像头选择 -->
+        <div class="face-device-select" v-if="!faceSnapshot">
+          <span>选择摄像头：</span>
+          <el-select v-model="faceDeviceId" placeholder="请选择" @change="switchFaceDevice" style="width: 260px">
+            <el-option v-for="d in faceDevices" :key="d.deviceId" :label="d.label" :value="d.deviceId" />
+          </el-select>
+        </div>
         <div class="camera-box">
           <video ref="faceVideoRef" autoplay playsinline class="face-video" />
           <canvas ref="faceCanvasRef" class="face-canvas" />
@@ -118,7 +125,9 @@
         </div>
       </div>
       <template #footer>
-        <el-button v-if="!faceSnapshot" type="primary" @click="captureFace">拍照</el-button>
+        <el-button v-if="!faceSnapshot" type="primary" :disabled="!faceVideoReady" :loading="!faceVideoReady" @click="captureFace">
+          {{ faceVideoReady ? '拍照' : '摄像头启动中...' }}
+        </el-button>
         <el-button v-if="faceSnapshot" @click="retakeFace">重拍</el-button>
         <el-button v-if="faceSnapshot" type="primary" :loading="faceUploading" @click="saveFace">保存人脸</el-button>
         <el-button @click="faceDialogVisible = false">关闭</el-button>
@@ -149,6 +158,9 @@ const faceCanvasRef = ref(null)
 const faceSnapshot = ref('')
 const faceUploading = ref(false)
 const currentFacePersonId = ref(null)
+const faceDevices = ref([])
+const faceDeviceId = ref('')
+const faceVideoReady = ref(false)
 let faceStream = null
 
 const searchForm = reactive({ userName: '', communityId: '' })
@@ -267,11 +279,22 @@ const handleDelete = (row) => {
 const handleFaceCollect = async (row) => {
   currentFacePersonId.value = row.personId
   faceSnapshot.value = ''
+  faceDevices.value = []
+  faceDeviceId.value = ''
   faceDialogVisible.value = true
   try {
-    faceStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-    if (faceVideoRef.value) {
-      faceVideoRef.value.srcObject = faceStream
+    // 先获取临时流以枚举设备
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    faceDevices.value = devices.filter(d => d.kind === 'videoinput')
+    tempStream.getTracks().forEach(t => t.stop())
+    // 优先选择内置摄像头
+    const builtIn = faceDevices.value.find(d =>
+      d.label.includes('Integrated') || d.label.includes('Built-in') || d.label.includes('内建') || d.label.includes('集成')
+    )
+    faceDeviceId.value = builtIn?.deviceId || faceDevices.value[0]?.deviceId || ''
+    if (faceDeviceId.value) {
+      await startFaceCamera(faceDeviceId.value)
     }
   } catch (e) {
     ElMessage.error('无法访问摄像头，请检查浏览器权限')
@@ -279,15 +302,49 @@ const handleFaceCollect = async (row) => {
   }
 }
 
+const startFaceCamera = async (deviceId) => {
+  stopFaceCamera()
+  faceVideoReady.value = false
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId } },
+      audio: false
+    })
+    if (faceVideoRef.value) {
+      faceVideoRef.value.srcObject = faceStream
+      // 等待视频元数据加载完毕，确保 videoWidth 有效
+      faceVideoRef.value.onloadedmetadata = () => {
+        faceVideoReady.value = true
+      }
+    }
+  } catch (e) {
+    ElMessage.error('启动摄像头失败')
+  }
+}
+
+const switchFaceDevice = (deviceId) => {
+  faceDeviceId.value = deviceId
+  startFaceCamera(deviceId)
+}
+
+// 限制图片最大分辨率，避免过高像素导致腾讯云API报ImageEmpty
+const MAX_FACE_IMAGE_WIDTH = 800
+
 const captureFace = () => {
-  if (!faceVideoRef.value || !faceCanvasRef.value) return
   const video = faceVideoRef.value
+  if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+    ElMessage.warning('摄像头画面未就绪，请稍后再试')
+    return
+  }
+  if (!faceCanvasRef.value) return
   const canvas = faceCanvasRef.value
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  canvas.getContext('2d').drawImage(video, 0, 0)
-  faceSnapshot.value = canvas.toDataURL('image/jpeg', 0.9)
-  stopCamera()
+  // 按比例缩放到最大宽度
+  const scale = Math.min(1, MAX_FACE_IMAGE_WIDTH / video.videoWidth)
+  canvas.width = Math.round(video.videoWidth * scale)
+  canvas.height = Math.round(video.videoHeight * scale)
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+  faceSnapshot.value = canvas.toDataURL('image/jpeg', 0.85)
+  stopFaceCamera()
 }
 
 const retakeFace = () => {
@@ -310,7 +367,7 @@ const saveFace = async () => {
   }
 }
 
-const stopCamera = () => {
+const stopFaceCamera = () => {
   if (faceStream) {
     faceStream.getTracks().forEach(t => t.stop())
     faceStream = null
@@ -352,6 +409,14 @@ onMounted(() => {
 /* 人脸采集 */
 .face-collect {
   text-align: center;
+}
+.face-device-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #606266;
 }
 .camera-box {
   background: #000;
