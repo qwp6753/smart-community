@@ -283,15 +283,18 @@ const handleFaceCollect = async (row) => {
   faceDeviceId.value = ''
   faceDialogVisible.value = true
   try {
-    // 先获取临时流以枚举设备
-    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    // 优先使用前置摄像头（电脑内置摄像头），facingMode: 'user' 即为面向用户的摄像头
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
     const devices = await navigator.mediaDevices.enumerateDevices()
     faceDevices.value = devices.filter(d => d.kind === 'videoinput')
     tempStream.getTracks().forEach(t => t.stop())
-    // 优先选择内置摄像头
-    const builtIn = faceDevices.value.find(d =>
-      d.label.includes('Integrated') || d.label.includes('Built-in') || d.label.includes('内建') || d.label.includes('集成')
-    )
+    // 优先匹配电脑内置摄像头：中文系统常见"内置"、"集成"、"笔记本"、"前置"、"内嵌"
+    const builtIn = faceDevices.value.find(d => {
+      const label = d.label || ''
+      return label.includes('Integrated') || label.includes('Built-in') ||
+             label.includes('内置') || label.includes('集成') || label.includes('笔记本') ||
+             label.includes('前置') || label.includes('内嵌') || label.includes('内建')
+    })
     faceDeviceId.value = builtIn?.deviceId || faceDevices.value[0]?.deviceId || ''
     if (faceDeviceId.value) {
       await startFaceCamera(faceDeviceId.value)

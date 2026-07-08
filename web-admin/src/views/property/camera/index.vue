@@ -271,13 +271,18 @@ const handlePreview = async (row) => {
   faceResult.value = null
   previewVisible.value = true
   try {
-    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    // facingMode: 'user' 让浏览器优先选择面向用户的摄像头（即电脑内置摄像头）
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
     const devices = await navigator.mediaDevices.enumerateDevices()
     videoDevices.value = devices.filter(d => d.kind === 'videoinput')
     tempStream.getTracks().forEach(t => t.stop())
-    const builtIn = videoDevices.value.find(d =>
-      d.label.includes('Integrated') || d.label.includes('Built-in') || d.label.includes('内建') || d.label.includes('集成')
-    )
+    // 中文系统常见关键词：内置、集成、笔记本、前置、内嵌、内建
+    const builtIn = videoDevices.value.find(d => {
+      const label = d.label || ''
+      return label.includes('Integrated') || label.includes('Built-in') ||
+             label.includes('内置') || label.includes('集成') || label.includes('笔记本') ||
+             label.includes('前置') || label.includes('内嵌') || label.includes('内建')
+    })
     selectedDeviceId.value = builtIn?.deviceId || videoDevices.value[0]?.deviceId || ''
     if (selectedDeviceId.value) {
       await startCamera(selectedDeviceId.value)

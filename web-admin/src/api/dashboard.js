@@ -1,7 +1,7 @@
 import request from './request'
 
-/** 首页统计数据 */
-export const getDashboard = () => request.get('/sys/statistics/dashboard')
+/** 首页统计数据（包含统计卡片数字 + 图表数据：出入趋势、人员类型分布、小区居民分布） */
+export const getDashboard = () => request.get('/dashboard/stats')
 
 /** 出入趋势统计（最近N天） */
 export const getRecordTrend = (days = 7) => request.get('/sys/statistics/recordTrend', { params: { days } })
