@@ -12,6 +12,7 @@ INSERT INTO menu (menu_id, menu_name, path, component, icon, parent_id, sort, ty
 (3,  '用户管理','/system/users',     'system/user/index',  'User',         2, 1, 1, 'system:user:view',        1),
 (4,  '角色管理','/system/roles',     'system/role/index',  'UserFilled',   2, 2, 1, 'system:role:view',        1),
 (5,  '菜单管理','/system/menus',     'system/menu/index',  'Menu',         2, 3, 1, 'system:menu:view',        1),
+(20, '数据字典','/system/dict',      'system/dict/index',  'Document',     2, 4, 1, 'system:dict:view',        1),
 (6,  '物业管理','/property',         'Layout',             'OfficeBuilding',0, 3, 0, 'property:community:view', 1),
 (7,  '小区管理','/property/communities','property/community/index','House',6, 1, 1, 'property:community:view', 1),
 (8,  '摄像头管理','/property/cameras','property/camera/index','VideoCamera',6, 2, 1, 'property:camera:view',    1),
@@ -26,13 +27,14 @@ INSERT INTO menu (menu_id, menu_name, path, component, icon, parent_id, sort, ty
 (16, '小区编辑', NULL, NULL, NULL, 7, 1, 2, 'property:community:edit', 1),
 (17, '摄像头编辑', NULL, NULL, NULL, 8, 1, 2, 'property:camera:edit',  1),
 (18, '居民编辑', NULL, NULL, NULL, 9, 1, 2, 'property:person:edit',    1),
-(19, '访客编辑', NULL, NULL, NULL, 12, 1, 2, 'access:visitor:edit',    1);
+(19, '访客编辑', NULL, NULL, NULL, 12, 1, 2, 'access:visitor:edit',    1),
+(21, '字典编辑', NULL, NULL, NULL, 20, 1, 2, 'system:dict:edit',       1);
 
 INSERT INTO role_menu (role_id, menu_id) VALUES
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
 (1, 6), (1, 7), (1, 8), (1, 9),
 (1, 10), (1, 11), (1, 12),
-(1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19);
+(1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19), (1, 20), (1, 21);
 
 INSERT INTO community (name, address, map_lng, map_lat, total_building, total_house, status) VALUES
 ('智慧社区一号', '北京市朝阳区望京街道100号',  116.480, 39.996, 8,  320, 1),

@@ -1,2 +1,115 @@
-/* 全局样式 */
+/* ═══ 智慧小区 - 全局设计系统 ═══ */
 
+/* ═══ 颜色体系 ═══ */
+$color-primary: #1677ff;
+$color-primary-light: #e6f4ff;
+$color-primary-dark: #0958d9;
+$color-success: #00b96b;
+$color-success-light: #e6f8f1;
+$color-warning: #fa8c16;
+$color-warning-light: #fff7e6;
+$color-danger: #ff4d4f;
+$color-danger-light: #fff1f0;
+$color-info: #909399;
+$color-info-light: #f4f4f5;
+
+/* 文字颜色 */
+$text-primary: #1f2329;
+$text-secondary: #646a73;
+$text-tertiary: #999999;
+$text-placeholder: #c0c4cc;
+
+/* 背景色 */
+$bg-page: #f6f7fb;
+$bg-card: #ffffff;
+$bg-hover: #f5f5f5;
+$bg-mask: rgba(0, 0, 0, 0.45);
+
+/* 边框 */
+$border-color: #e5e6eb;
+$border-light: #f0f0f0;
+
+/* ═══ 间距体系 ═══ */
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 48rpx;
+
+/* ═══ 字号体系 ═══ */
+$font-xs: 22rpx;
+$font-sm: 26rpx;
+$font-md: 28rpx;
+$font-lg: 32rpx;
+$font-xl: 36rpx;
+$font-xxl: 40rpx;
+$font-xxxl: 48rpx;
+
+/* ═══ 圆角 ═══ */
+$radius-sm: 8rpx;
+$radius-md: 12rpx;
+$radius-lg: 16rpx;
+$radius-xl: 20rpx;
+$radius-round: 999rpx;
+
+/* ═══ 阴影 ═══ */
+$shadow-card: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+$shadow-hover: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+
+/* ═══ 全局重置 ═══ */
+page {
+  background-color: $bg-page;
+  font-size: $font-md;
+  color: $text-primary;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+view, text, image {
+  box-sizing: border-box;
+}
+
+/* ═══ 通用工具类 ═══ */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-between {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* ═══ 安全区域 ═══ */
+.safe-area-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}

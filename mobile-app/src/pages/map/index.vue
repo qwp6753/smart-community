@@ -1,94 +1,152 @@
 <template>
   <view class="page">
-    <view class="card-title">小区地图</view>
-    <!-- id 在 H5 模式下会渲染到 DOM 上，供 AMap 挂载 -->
-    <view id="amapContainer" class="map-container"></view>
+    <!-- H5 平台：高德地图 JS API -->
+    <!-- #ifdef H5 -->
+    <view id="amapContainer" class="map-container-h5"></view>
+    <!-- #endif -->
+
+    <!-- 微信小程序平台：原生 map 组件 -->
+    <!-- #ifdef MP-WEIXIN -->
+    <map
+      class="map-container-mp"
+      :latitude="centerLat"
+      :longitude="centerLng"
+      :markers="mpMarkers"
+      :scale="14"
+      :show-location="false"
+      @markertap="onMarkerTap"
+    />
+    <!-- #endif -->
+
+    <!-- 标记点列表 -->
+    <view class="marker-list" v-if="markers.length > 0">
+      <view class="marker-list__header">
+        <text class="marker-list__title">小区列表</text>
+        <text class="marker-list__count">共 {{ markers.length }} 个</text>
+      </view>
+      <scroll-view scroll-y class="marker-list__scroll">
+        <view
+          v-for="(m, i) in markers"
+          :key="i"
+          class="marker-item"
+          @click="focusMarker(m, i)"
+        >
+          <view class="marker-item__dot">{{ i + 1 }}</view>
+          <view class="marker-item__info">
+            <text class="marker-item__name">{{ m.name }}</text>
+            <text class="marker-item__addr">{{ m.address || '-' }}</text>
+          </view>
+          <text class="marker-item__arrow">📍</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <AppEmpty v-if="!loading && markers.length === 0" icon="🗺️" message="暂无小区位置数据" />
   </view>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
-import { get } from '@/utils/request'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { getMapConfig } from '@/api/face'
+import AppEmpty from '@/components/AppEmpty.vue'
 
-let map = null
+const loading = ref(true)
+const centerLng = ref(116.397428)
+const centerLat = ref(39.90923)
+const markers = ref([])
 
-const loadMap = async () => {
-  // 1. 获取地图配置
-  let config
+// 微信小程序 markers 格式
+const mpMarkers = ref([])
+
+// H5 地图实例
+let amapInstance = null
+
+const loadConfig = async () => {
+  loading.value = true
   try {
-    const res = await get('/map/config')
-    config = res.data
+    const res = await getMapConfig()
+    const config = res.data
+
+    if (config.centerLng) centerLng.value = parseFloat(config.centerLng)
+    if (config.centerLat) centerLat.value = parseFloat(config.centerLat)
+
+    const list = config.markers || []
+    markers.value = list
+
+    // 构建小程序 markers
+    mpMarkers.value = list.map((m, i) => ({
+      id: i,
+      latitude: parseFloat(m.lat),
+      longitude: parseFloat(m.lng),
+      title: m.name,
+      iconPath: '/static/tabbar/home-active.png', // 使用已有图标作为标记点
+      width: 30,
+      height: 30,
+      callout: {
+        content: m.name + (m.address ? '\n' + m.address : ''),
+        fontSize: 12,
+        borderRadius: 8,
+        padding: 8,
+        display: 'BYCLICK'
+      }
+    }))
+
+    // H5 平台初始化地图
+    // #ifdef H5
+    if (config.ak) {
+      await initAmap(config)
+    }
+    // #endif
   } catch (e) {
     uni.showToast({ title: '地图配置加载失败', icon: 'none' })
-    return
+  } finally {
+    loading.value = false
   }
+}
 
-  if (!config.ak) {
-    uni.showToast({ title: '地图密钥未配置', icon: 'none' })
-    return
-  }
-
-  // 2. 等待 DOM 容器（uni-app H5 会把 view 渲染为 div）
+// ═══ H5：高德地图 JS API 初始化 ═══
+// #ifdef H5
+const initAmap = async (config) => {
+  // 等待 DOM 容器
   await new Promise((resolve) => {
     const check = () => {
-      if (document.getElementById('amapContainer')) {
-        resolve()
-      } else {
-        setTimeout(check, 50)
-      }
+      if (document.getElementById('amapContainer')) resolve()
+      else setTimeout(check, 50)
     }
     check()
   })
 
-  // 3. 加载 AMap SDK（安全密钥必须在脚本加载前设置）
+  // 加载 SDK
   await new Promise((resolve) => {
-    if (window.AMap && window.AMap.Map) {
-      resolve()
-      return
-    }
+    if (window.AMap && window.AMap.Map) { resolve(); return }
     if (config.securityJsCode) {
       window._AMapSecurityConfig = { securityJsCode: config.securityJsCode }
     }
-    window.__amapReady = () => {
-      resolve()
-    }
+    window.__amapReady = () => resolve()
     const script = document.createElement('script')
     script.src = `https://webapi.amap.com/maps?v=2.0&key=${config.ak}&callback=__amapReady&plugin=AMap.InfoWindow`
     script.async = true
     document.head.appendChild(script)
   })
 
-  // 4. 创建地图
-  const centerLng = parseFloat(config.centerLng) || 116.397428
-  const centerLat = parseFloat(config.centerLat) || 39.90923
-
-  map = new window.AMap.Map('amapContainer', {
+  // 创建地图
+  amapInstance = new window.AMap.Map('amapContainer', {
     zoom: 13,
-    center: [centerLng, centerLat],
+    center: [centerLng.value, centerLat.value],
     resizeEnable: true
   })
 
-  // 5. 放置小区标记
-  const markerList = config.markers || []
-  if (markerList.length === 0) return
-
+  // 放置标记
   const points = []
-
-  markerList.forEach((m) => {
+  markers.value.forEach((m) => {
     const lng = parseFloat(m.lng)
     const lat = parseFloat(m.lat)
     if (isNaN(lng) || isNaN(lat)) return
     points.push([lng, lat])
 
-    // 标签文本
     const labelDiv = `<div style="
-      background:#2b85e4;
-      color:#fff;
-      padding:4px 10px;
-      border-radius:4px;
-      font-size:12px;
-      white-space:nowrap;
-      box-shadow:0 1px 4px rgba(0,0,0,.3);
+      background:#1677ff;color:#fff;padding:4px 12px;border-radius:6px;
+      font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);
     ">${m.name}</div>`
 
     const marker = new window.AMap.Marker({
@@ -97,56 +155,173 @@ const loadMap = async () => {
       animation: 'AMAP_ANIMATION_DROP',
       label: { content: labelDiv, direction: 'top' }
     })
-    marker.setMap(map)
+    marker.setMap(amapInstance)
 
-    // 点击弹信息窗
     marker.on('click', () => {
       const info = new window.AMap.InfoWindow({
-        content: `<div style="padding:6px 10px;font-size:13px">
+        content: `<div style="padding:8px 12px;font-size:13px">
           <div style="font-weight:bold;margin-bottom:4px">${m.name}</div>
           <div style="color:#666">${m.address || ''}</div>
         </div>`,
         offset: [0, -30]
       })
-      info.open(map, marker.getPosition())
+      info.open(amapInstance, marker.getPosition())
     })
   })
 
-  // 自适应视野
   if (points.length > 0) {
-    map.setFitView(points.map(p => new window.AMap.LngLat(p[0], p[1])), false, [60, 100, 60, 60])
+    amapInstance.setFitView(points.map(p => new window.AMap.LngLat(p[0], p[1])), false, [60, 100, 60, 60])
+  }
+}
+// #endif
+
+// ═══ 微信小程序标记点击 ═══
+const onMarkerTap = (e) => {
+  const markerId = e.detail.markerId
+  const m = markers.value[markerId]
+  if (m) {
+    uni.showModal({
+      title: m.name,
+      content: m.address || '暂无地址信息',
+      showCancel: false,
+      confirmText: '关闭'
+    })
   }
 }
 
+// ═══ 从列表定位到标记 ═══
+const focusMarker = (m, index) => {
+  centerLng.value = parseFloat(m.lng)
+  centerLat.value = parseFloat(m.lat)
+
+  // #ifdef H5
+  if (amapInstance) {
+    amapInstance.setZoomAndCenter(16, [parseFloat(m.lng), parseFloat(m.lat)])
+  }
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  uni.showToast({ title: `已定位到：${m.name}`, icon: 'none' })
+  // #endif
+}
+
 onMounted(() => {
-  // 延迟确保 DOM 渲染完成
-  setTimeout(loadMap, 200)
+  setTimeout(loadConfig, 200)
 })
 
 onUnmounted(() => {
-  if (map) {
-    map.destroy()
-    map = null
+  // #ifdef H5
+  if (amapInstance) {
+    amapInstance.destroy()
+    amapInstance = null
   }
+  // #endif
 })
 </script>
 
 <style scoped lang="scss">
 .page {
-  padding: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #f6f7fb;
 }
-.card-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  padding: 24rpx 32rpx;
-  background: #fff;
-  flex-shrink: 0;
-}
-.map-container {
+
+// H5 地图容器
+.map-container-h5 {
   flex: 1;
   width: 100%;
+  min-height: 400rpx;
+}
+
+// 小程序地图容器
+.map-container-mp {
+  width: 100%;
+  height: 500rpx;
+  flex-shrink: 0;
+}
+
+// 标记点列表
+.marker-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 20rpx 20rpx 0 0;
+  margin-top: -20rpx;
+  overflow: hidden;
+  box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.06);
+}
+
+.marker-list__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.marker-list__title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.marker-list__count {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.marker-list__scroll {
+  flex: 1;
+  padding: 0 32rpx;
+}
+
+.marker-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+
+  &:last-child { border-bottom: none; }
+}
+
+.marker-item__dot {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #1677ff;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.marker-item__info {
+  flex: 1;
+}
+
+.marker-item__name {
+  display: block;
+  font-size: 28rpx;
+  color: #1f2329;
+  font-weight: 500;
+  margin-bottom: 4rpx;
+}
+
+.marker-item__addr {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.marker-item__arrow {
+  font-size: 28rpx;
+  color: #c0c4cc;
 }
 </style>

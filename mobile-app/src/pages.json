@@ -8,23 +8,27 @@
       }
     },
     {
-      "path": "pages/home/index",
+      "path": "pages/tabbar/home/index",
       "style": {
-        "navigationBarTitleText": "智慧小区",
-        "navigationBarBackgroundColor": "#1677ff",
-        "navigationBarTextStyle": "white"
+        "navigationBarTitleText": "智慧小区"
       }
     },
     {
-      "path": "pages/person/search",
+      "path": "pages/tabbar/service/index",
       "style": {
-        "navigationBarTitleText": "居民查询"
+        "navigationBarTitleText": "服务"
       }
     },
     {
-      "path": "pages/visitor/create",
+      "path": "pages/tabbar/record/index",
       "style": {
-        "navigationBarTitleText": "访客登记"
+        "navigationBarTitleText": "出入记录"
+      }
+    },
+    {
+      "path": "pages/tabbar/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
       }
     },
     {
@@ -34,22 +38,78 @@
       }
     },
     {
+      "path": "pages/person/search",
+      "style": {
+        "navigationBarTitleText": "居民查询"
+      }
+    },
+    {
+      "path": "pages/person/detail",
+      "style": {
+        "navigationBarTitleText": "居民详情"
+      }
+    },
+    {
+      "path": "pages/visitor/create",
+      "style": {
+        "navigationBarTitleText": "访客登记"
+      }
+    },
+    {
+      "path": "pages/visitor/list",
+      "style": {
+        "navigationBarTitleText": "访客记录"
+      }
+    },
+    {
+      "path": "pages/community/detail",
+      "style": {
+        "navigationBarTitleText": "小区信息"
+      }
+    },
+    {
       "path": "pages/map/index",
       "style": {
         "navigationBarTitleText": "小区地图"
       }
-    },
-    {
-      "path": "pages/record/index",
-      "style": {
-        "navigationBarTitleText": "出入记录"
-      }
     }
   ],
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/tabbar/home/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/service/index",
+        "text": "服务",
+        "iconPath": "static/tabbar/service.png",
+        "selectedIconPath": "static/tabbar/service-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/record/index",
+        "text": "记录",
+        "iconPath": "static/tabbar/record.png",
+        "selectedIconPath": "static/tabbar/record-active.png"
+      },
+      {
+        "pagePath": "pages/tabbar/mine/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
+    ]
+  },
   "globalStyle": {
     "backgroundColor": "#f6f7fb",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "智慧小区",
-    "navigationBarBackgroundColor": "#ffffff"
+    "navigationBarBackgroundColor": "#FFFFFF"
   }
 }
