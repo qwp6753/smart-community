@@ -215,6 +215,7 @@ const handleSearch = () => {
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
+    cameraId: null,
     name: '',
     ipAddress: '',
     communityId: null,

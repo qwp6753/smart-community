@@ -182,6 +182,7 @@ const handleSearch = () => {
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
+    communityId: null,
     name: '',
     address: '',
     totalBuilding: 0,

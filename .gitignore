@@ -8,6 +8,12 @@
 target/
 *.class
 
+# Frontend Dependencies & Builds
+node_modules/
+dist/
+mobile-app/dist/
+web-admin/dist/
+
 # System Files
 .DS_Store
 Thumbs.db
@@ -19,6 +25,9 @@ logs/
 # Sensitive Configuration
 application-local.yml
 application-local.properties
+application.properties
+*.env
+*.env.local
 
 # Maven Wrapper
 .mvn/

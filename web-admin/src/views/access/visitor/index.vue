@@ -186,6 +186,7 @@ const handleSearch = () => {
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
+    visitorId: null,
     name: '',
     mobile: '',
     idCard: '',

@@ -222,6 +222,7 @@ const handleSearch = () => {
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(form, {
+    personId: null,
     userName: '',
     mobile: '',
     sex: '',
